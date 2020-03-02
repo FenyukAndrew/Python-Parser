@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+#-*-coding:utf-8-*-
+
+import shelve
+import csv
+from contextlib import closing
+
+from mtranslate import translate
+
+import tkinter as tk
+
+my_dict=dict()
+
+def parse_srt(filename):
+	flag=False
+	with open(filename,"r",encoding='utf-8') as file1:
+		for i in file1:
+			i=i.strip()
+			if len(i)==0:
+				flag=False
+				#print("EMPTY LINE")
+			if flag:
+				i=i.lower()
+				chars=list()
+				flag_tag=False
+				for c in i:
+					if c=='<':
+						flag_tag=True
+					if c=='>':
+						flag_tag=False
+					else:
+						if not flag_tag:
+							if c in ",?!.-%\"\n/()[]:":
+								chars.append(' ')
+							else:
+								chars.append(c)
+					
+				#i=i.replace(',',' ').replace('?',' ').replace('!',' ').replace('.',' ').replace('-',' ').replace('%',' ').replace('"',' ').replace('\n',' ').lower()
+				#words=i.split(' ')
+				#print("".join(chars))
+				words="".join(chars).split(' ')
+				for w in words:
+					if len(w)>0 and not w.isdigit():
+						if w[0]=="\'":#Remove first '
+							w=w[1:]
+						try:
+							if w[-1]=="\'":#Remove first '
+								w=w[:-1]
+							if w[-2:]=="'s":
+								w=w[:-2]
+						except Exception:
+							key=1
+						if w in my_dict:
+							my_dict[w]+=1
+						else:
+							my_dict[w]=1
+#						try:
+	#						print(w)
+#						except Exception:
+#							print()
+			if '-->' in i:
+				#print("TIME LINE")
+				flag=True
+
+def write_out_file(filename):
+	with open(filename,"w",encoding="utf-8") as file3:
+		writer_out=csv.writer(file3)
+		with closing(shelve.open(FILENAME)) as states:
+			for key1,value1 in my_dict.items():
+				if not key1 in states:
+					writer_out.writerow([key1,value1,translate(key1, "ru", "en")])
+					try:
+						print(key1,value1)
+					except:
+						print()
+				
+				
+				
+			
+FILENAME="my_words"
+
+def show_word():
+	global index_currect_word
+	while local_dict[index_currect_word][0] in global_dict:
+		if index_currect_word<last_current_word:
+			index_currect_word+=1
+		else:
+			label.config(text="END WORDS!!!")
+			return
+	current_word=local_dict[index_currect_word][0]
+	current_word_translate=local_dict[index_currect_word][1]
+	label.config(text=current_word+"   =   "+current_word_translate)
+	
+
+def btn_next(categotyUse):
+	global index_currect_word
+	if not categotyUse==-1:
+		current_word=local_dict[index_currect_word][0]
+		current_word_translate=local_dict[index_currect_word][1]
+		#label.config(text=current_word+"   =   "+current_word_translate)
+		global_dict[current_word]=(current_word_translate,categotyUse)
+	#Next word
+	if index_currect_word<last_current_word:
+		index_currect_word+=1
+	show_word()
+
+def btn_next_good():
+	btn_next(10)
+
+def btn_next_bad():
+	btn_next(0)
+
+def btn_next_not():
+	btn_next(-1)
+	
+def load_to_dict_word_file(filename):
+	with open(filename,"r",encoding="utf-8") as file3:
+		reader1=csv.reader(file3)
+		global local_dict
+		local_dict=list()
+		for row in reader1:
+			local_dict.append((row[0],row[2]))
+		global last_current_word
+		last_current_word=len(local_dict)-1
+		
+	
+	global global_dict
+	global_dict=shelve.open(FILENAME)
+	global index_currect_word
+	index_currect_word=0
+	root=tk.Tk()
+	root.geometry("400x300+200+200")
+	global label
+	label=tk.Label(root,text="",font="Arial 16")
+	show_word()
+	label.grid(row=0,column=0,columnspan=3,padx=10,pady=10)
+	btnGood=tk.Button(text="Good",command=btn_next_good)
+	btnGood.grid(row=1,column=0,padx=10,pady=10)
+	btnBad=tk.Button(text="Bad",command=btn_next_bad)
+	btnBad.grid(row=1,column=1,padx=10,pady=10)
+	btnBad=tk.Button(text="Not",command=btn_next_not)
+	btnBad.grid(row=1,column=2,padx=10,pady=10)
+	#btnBadSound=tk.Button(text="Bad Sound",command=btn_next)
+	#btnBadSound.grid(row=1,column=2,padx=10,pady=10)
+	root.title("")
+	
+	root.mainloop()
+		
+	global_dict.close()
+	print()
+		#learn_word(row[0],row[2])
+		#print(row[0])
+
+def list_word_dict_show():
+	local_list=list()
+	with closing(shelve.open(FILENAME)) as states:
+		#for state in states.items():
+		#for state in states.values():
+		#Sometimes dictionary may be corrupt
+		for state in states.keys():
+			try:
+				clear_word=state
+#				if clear_word[0]=="\'":
+#					clear_word=clear_word[1:]
+#				if clear_word[-1]=="\'":
+#					clear_word=clear_word[:-1]
+#				if clear_word[-1]=="s":#GET ALL WORD WITH ending S
+#					new_word=clear_word[:-1]
+#					if new_word in states:
+#						local_list.append((new_word,states[new_word][0],states[new_word][1]))
+#						local_list.append((clear_word,states[state][0],states[state][1]))
+				local_list.append((clear_word,states[state][0],states[state][1]))
+			except Exception:
+				print("Error record:",state)
+	local_list.sort()
+	with open(FILENAME+".txt","w",encoding="utf-8") as file3:
+		writer_out=csv.writer(file3)
+		for record in local_list:
+			writer_out.writerow(record)
+
+				
+def rewrite_global_dict_from_list_word():
+	with open(FILENAME+".txt","r",encoding="utf-8") as file3:
+		writer_out=csv.reader(file3)
+		with closing(shelve.open(FILENAME)) as states:
+			for record in writer_out:
+				states[record[0]]=(record[1],record[2])
+		
+
+	
+#BEGIN SRT - RESULT .CSV file with new words
+#parse_srt("SRT/3-milk.srt")
+write_out_file("words_out_ru.cvs")
+#ADD NEW WORD TO GLOBAL DICT
+load_to_dict_word_file("words_out_ru.cvs")
+#LIST ALL WORD
+list_word_dict_show()
+#RECREATE GLOBAL DICT BY WORDS LIST
+#WARNING!!!	#rewrite_global_dict_from_list_word()

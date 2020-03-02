@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+#-*-coding:utf-8-*-
+
+import shelve
+import csv
+from contextlib import closing
+
+FILENAME="my_words"
+
+def parse_srt(filename):
+	filename_out=filename.replace(".srt","_TRANS.srt")
+	flag=False
+	with open(filename,"r",encoding='utf-8') as file1:
+		with open(filename_out,"w",encoding='utf-8') as file_out:
+			with closing(shelve.open(FILENAME)) as states:
+				print("BEGIN")
+				for i in file1:
+					out_str=i
+					i=i.strip()
+					if len(i)==0:
+						flag=False
+					if flag:
+						#i=i.lower()
+						chars=list()
+						flag_tag=False
+						for c in i:
+							if c=='<':
+								flag_tag=True
+							if c=='>':
+								flag_tag=False
+							else:
+								if not flag_tag:
+									if c in ",?!.-%\"\n/()[]:":
+										chars.append(' ')
+									else:
+										chars.append(c)
+						words="".join(chars).split(' ')
+						for w in words:
+							if len(w)>0 and not w.isdigit():
+								if w[0]=='\'':#Remove first '
+									w=w[1:]
+								try:
+									if w[-1]=="\'":#Remove first '
+										w=w[:-1]
+									if w[-2:]=="'s":
+										w=w[:-2]
+								except Exception:
+									key=1
+								w_l=w.lower()
+								if w_l in states:
+									if int(states[w_l][1])<10:
+										translate=states[w_l][0]
+										#out_str=out_str.replace(w,w+" <u>["+translate+"]</u>",1)
+										#out_str=out_str.replace(w,w+" ["+translate+"]",1)
+										out_str=out_str.replace(w,w+" <b><font color=\"#800000\">"+translate+"</font></b>",1)
+					if "-->" in i:
+						flag=True
+					file_out.write(out_str)
+									
+#parse_srt("SRT/3-milk.srt")
